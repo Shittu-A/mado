@@ -1,19 +1,32 @@
-name: Deploy Website
+name: Deploy via FTP (lftp mirror)
 
 on:
   push:
     branches:
-      - main
+      - main   # change if needed
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: FTP deploy with lftp
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      - name: Deploy using lftp mirror
         run: |
-          sudo apt-get update
-          sudo apt-get install -y lftp
-          lftp -c "open -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }}; ls"
+          lftp -c "
+          set ftp:ssl-allow no;
+          open -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }};
+          mirror -R \
+          --verbose \
+          --delete \
+          --exclude .git/ \
+          --exclude node_modules/ \
+          --exclude .github/ \
+          ./ ${{ secrets.FTP_REMOTE_DIR }};
+          bye
+          "
